@@ -10,7 +10,7 @@ import SwiftyJSON
 import Alamofire
 import JGProgressHUD
 import MessageKit
-import InputBarAccessoryView
+import InputBarAccessoryView 
 
 class APChatViewController: MessagesViewController, MessagesDataSource{
     
@@ -79,20 +79,21 @@ class APChatViewController: MessagesViewController, MessagesDataSource{
     private func insertNewMessage(_ message: Message, isLoadingMore: Bool = false) {
         messageList.append(message)
         
-        self.getResponse(with: message.message ?? "") { json, error in
+        self.getResponse(with: message.message ?? "") { text, error in
             if error == nil{
-                let jsonData = """
-                \(json!)
-                """.data(using: .utf8)!
-
-                let data = try? JSONDecoder().decode(APGPTModel.self, from: jsonData)
-
-                let results = data?.choices[0].text
-                let data_renspose = results!.replacingOccurrences(of: "\n\n", with: "")
+//                let jsonData = """
+//                \(json!)
+//                """.data(using: .utf8)!
+//
+//                let data = try? JSONDecoder().decode(APGPTModel.self, from: jsonData)
+//
+//                let results = data?.choices[0].text
+//                let data_renspose = results!.replacingOccurrences(of: "\n\n", with: "")
                 
+                let data_renspose = text
                 let date = Date()
                 
-                let msg = Message(id: UUID().uuidString, username: "OpenAI (Chat bot)", message: data_renspose, isUser: false, created: date)
+                let msg = Message(id: UUID().uuidString, username: "OpenAI (Chat bot)", message: data_renspose!, isUser: false, created: date)
                 
                 self.messageList.append(msg)
                 
@@ -187,35 +188,49 @@ class APChatViewController: MessagesViewController, MessagesDataSource{
         reloadInputViews()
     }
     
-    func getResponse(with text: String, completion: @escaping(JSON?, Error?) -> Void){
+    func getResponse(with searchTerm: String, completion: @escaping(String?, Error?) -> Void){
 
-        let url =  "ENTER YOUR API HERE"
-        let parameters = ["prompt": text] as [String : Any]
+        let requester = Requester()
+        //数据请求
+        requester.sendRequest(query: searchTerm, completion: { [weak self] result in
+            switch result {
+            case .success(let text):
+//                    self?.delegate?.publishResults(results: text)
+                completion(text, nil)
+            case .failure(let error):
+                print(error.localizedDescription)
+            }
+        })
         
-        DispatchQueue.main.async {
-            self.backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "FNT") {
-                // End the task if time expires.
-                UIApplication.shared.endBackgroundTask(self.backgroundTaskID)
-                self.backgroundTaskID = UIBackgroundTaskIdentifier.invalid
-            }
-            
-            self.AlamofireManager!.request(url, method: .post, parameters: parameters,encoding: JSONEncoding.default).responseJSON{response in
-                switch(response.result) {
-                case .success(_):
-                    if response.value != nil{
-                        let json = JSON(response.value!)
-                        let data = json["response"]
-                        print("Request response data==>\(data)")
-                        completion(data, nil)
-                    }
-                    break
-                case .failure(let error):
-                    completion(nil, error.asAFError)
-                    break
-                }
-                self.endBGTask()
-            }
-        }
+        //网络请求
+        
+//        let url =  "ENTER YOUR API HERE"
+//        let parameters = ["prompt": text] as [String : Any]
+//
+//        DispatchQueue.main.async {
+//            self.backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "FNT") {
+//                // End the task if time expires.
+//                UIApplication.shared.endBackgroundTask(self.backgroundTaskID)
+//                self.backgroundTaskID = UIBackgroundTaskIdentifier.invalid
+//            }
+//
+//            self.AlamofireManager!.request(url, method: .post, parameters: parameters,encoding: JSONEncoding.default).responseJSON{response in
+//                switch(response.result) {
+//                case .success(_):
+//                    if response.value != nil{
+//                        let json = JSON(response.value!)
+//                        let data = json["response"]
+//                        print("Request response data==>\(data)")
+//                        completion(data, nil)
+//                    }
+//                    break
+//                case .failure(let error):
+//                    completion(nil, error.asAFError)
+//                    break
+//                }
+//                self.endBGTask()
+//            }
+//        }
     }
     
     func endBGTask(){
@@ -381,7 +396,7 @@ extension APChatViewController: MessagesDisplayDelegate {
 
 extension APChatViewController: MessagesLayoutDelegate {
   
-    func cellTopLabelHeight(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionxsView) -> CGFloat {
+    private func cellTopLabelHeight(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessageCollectionViewCell) -> CGFloat {
         if indexPath.section >= 1 {
             let lastMessage = messageList[indexPath.section - 1]
             
